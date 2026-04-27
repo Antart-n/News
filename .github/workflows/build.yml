@@ -9,36 +9,39 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
 
-      # usado para armazenar em cache as dependências com um tempo limite
-      - name: Obter Data
-        id: get-date
+      - name: Instalar dependências do sistema
         run: |
-          echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
+          sudo apt update
+          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip
+          pip install --upgrade pip
+          pip install buildozer cython virtualenv
+
+      - name: Obter data
+        id: get-date
+        run: echo "date=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
         shell: bash
 
-      - name: Cache do diretório global do Buildozer
-        uses: actions/cache@v2
+      - name: Cache global do Buildozer
+        uses: actions/cache@v4
         with:
-          path: .buildozer_global
+          path: ~/.buildozer
           key: buildozer-global-${{ hashFiles('buildozer.spec') }}
 
-      - name: Cache do diretório do Buildozer
-        uses: actions/cache@v2
+      - name: Cache do build local
+        uses: actions/cache@v4
         with:
           path: .buildozer
           key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
 
-      - name: Build com Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          buildozer_version: stable
+      - name: Build APK com Buildozer
+        run: |
+          yes | buildozer -v android debug
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: pacote
-          path: ${{ steps.buildozer.outputs.filename }}
+          name: apk
+          path: bin/*.apk
